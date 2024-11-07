@@ -1,15 +1,14 @@
-// lib/screens/prayer_times_screen.dart
-
+import 'package:athan/screen/settings_screen.dart';
 import 'package:athan/widgets/custom_drawer.dart';
 import 'package:athan/widgets/reused_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:connectivity_plus/connectivity_plus.dart'; // Import connectivity_plus
-import 'dart:async'; // Import dart:async
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 
 import '../localization/language_constants.dart';
 import '../prayer_time_services.dart';
-import '../utils/numeral_convertor.dart'; // Ensure the path is correct
+import '../utils/numeral_convertor.dart';
 
 class PrayerTimesScreen extends StatefulWidget {
   @override
@@ -21,6 +20,8 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
   Map<String, String>? _prayerTimes;
   String? _errorMessage;
   bool _isLoading = true;
+
+  DateTime _selectedDate = DateTime.now();
 
   // Connectivity
   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
@@ -41,13 +42,11 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
     super.dispose();
   }
 
-  // Check the initial connectivity status
   Future<void> _checkInitialConnectivity() async {
     var connectivityResult = await (Connectivity().checkConnectivity());
     _updateConnectionStatus(connectivityResult);
   }
 
-  // Update the connection status
   void _updateConnectionStatus(ConnectivityResult result) {
     bool previousConnection = _isConnected;
     if (result == ConnectivityResult.none) {
@@ -57,18 +56,16 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
       }
     } else {
       _isConnected = true;
-      // Optionally, you can retry fetching prayer times when the connection is restored
       if (!previousConnection) {
         _fetchPrayerTimes();
       }
     }
   }
 
-  // Show Alert Dialog for No Internet Connection
   void _showNoConnectionDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(getTranslated(context, 'No Internet')),
@@ -86,7 +83,6 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
               child: Text(getTranslated(context, 'Exit')),
               onPressed: () {
                 Navigator.of(context).pop();
-                // Optionally, you can exit the app or navigate back
               },
             ),
           ],
@@ -111,7 +107,8 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
     });
 
     try {
-      final times = await _prayerTimesService.getPrayerTimes();
+      final times =
+          await _prayerTimesService.getPrayerTimes(date: _selectedDate);
       setState(() {
         _prayerTimes = times;
         _isLoading = false;
@@ -125,7 +122,6 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
     }
   }
 
-  // Show Error Dialog
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -157,7 +153,6 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
     return Localizations.localeOf(context).languageCode == 'ar';
   }
 
-  // Helper method to translate AM/PM to Arabic
   String _translateAmPm(String time) {
     return time
         .replaceAll(RegExp(r'AM', caseSensitive: false), 'ص')
@@ -168,13 +163,22 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
   Widget build(BuildContext context) {
     String formattedDate = DateFormat(
             'EEEE, MMMM d, yyyy', Localizations.localeOf(context).toString())
-        .format(DateTime.now());
+        .format(_selectedDate);
 
     return Scaffold(
-      appBar: ReusedAppBar(
-        title: getTranslated(context, 'Prayer Times'), // Use translated title
+      appBar: AppBar(
+        title: Text(getTranslated(context, "Prayer Times")),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const SettingsScreen()));
+            },
+            icon: Icon(Icons.settings),
+          )
+        ],
       ),
-      drawer: const CustomDrawer(),
       body: Column(
         children: [
           Padding(
@@ -183,6 +187,29 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
               formattedDate,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _selectedDate = _selectedDate.subtract(Duration(days: 1));
+                  });
+                  _fetchPrayerTimes();
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.arrow_forward),
+                onPressed: () {
+                  setState(() {
+                    _selectedDate = _selectedDate.add(Duration(days: 1));
+                  });
+                  _fetchPrayerTimes();
+                },
+              ),
+            ],
           ),
           Expanded(
             child: _isLoading
@@ -206,8 +233,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
                                 color: _getPrayerIconColor(entry.key),
                               ),
                               title: Text(
-                                getTranslated(context,
-                                    entry.key), // Translate prayer names
+                                getTranslated(context, entry.key),
                                 style: TextStyle(fontSize: 18),
                               ),
                               trailing: Text(
