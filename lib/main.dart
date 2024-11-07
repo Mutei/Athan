@@ -1,14 +1,27 @@
 import 'package:athan/prayer_time_services.dart';
 import 'package:athan/screen/main_screen.dart';
 import 'package:athan/state_management/general_provider.dart';
-import 'package:provider/provider.dart'; // Correct import for Consumer
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 import 'localization/demo_localization.dart';
 
-void main() {
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize local notifications
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
   runApp(
     MultiProvider(
       providers: [
@@ -60,8 +73,7 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Locale? _locale = Locale("en", "US"); // Setting a default lo
-  // cale
+  Locale? _locale = Locale("en", "US"); // Setting a default locale
 
   void setLocale(Locale locale) {
     setState(() {
@@ -111,7 +123,7 @@ class _MyAppState extends State<MyApp> {
                     }
                     return supportedLocales.first;
                   },
-                  home: PrayerTimesScreen(),
+                  home: MainScreen(),
                 );
               },
             ),

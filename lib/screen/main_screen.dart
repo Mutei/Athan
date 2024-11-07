@@ -1,21 +1,23 @@
 import 'package:athan/screen/settings_screen.dart';
-import 'package:athan/widgets/custom_drawer.dart';
-import 'package:athan/widgets/reused_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:async';
 
 import '../localization/language_constants.dart';
 import '../prayer_time_services.dart';
 import '../utils/numeral_convertor.dart';
 
-class PrayerTimesScreen extends StatefulWidget {
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+class MainScreen extends StatefulWidget {
   @override
-  _PrayerTimesScreenState createState() => _PrayerTimesScreenState();
+  _MainScreenState createState() => _MainScreenState();
 }
 
-class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
+class _MainScreenState extends State<MainScreen> {
   final PrayerTimesService _prayerTimesService = PrayerTimesService();
   Map<String, String>? _prayerTimes;
   String? _errorMessage;
@@ -113,6 +115,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
         _prayerTimes = times;
         _isLoading = false;
       });
+      _schedulePrayerNotifications(times);
     } catch (e) {
       setState(() {
         _errorMessage = getTranslated(context, 'Error fetching prayer times');
@@ -120,6 +123,36 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
       });
       _showErrorDialog(_errorMessage!);
     }
+  }
+
+  void _schedulePrayerNotifications(Map<String, String> prayerTimes) {
+    prayerTimes.forEach((prayer, time) {
+      DateTime notificationTime = _parseTimeToToday(time);
+      if (notificationTime.isAfter(DateTime.now())) {
+        flutterLocalNotificationsPlugin.schedule(
+          prayer.hashCode,
+          'Prayer Time Alert',
+          'It\'s time for $prayer prayer.',
+          notificationTime,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              'prayer_channel',
+              'Prayer Notifications',
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  DateTime _parseTimeToToday(String time) {
+    final DateTime now = DateTime.now();
+    final DateFormat timeFormat = DateFormat.jm();
+    final DateTime parsedTime = timeFormat.parse(time);
+    return DateTime(
+        now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
   }
 
   void _showErrorDialog(String message) {
